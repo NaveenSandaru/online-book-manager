@@ -5,7 +5,7 @@ import { authenticateToken } from '../middleware/authentication.js';
 const router = express.Router();
 
 // Get all shipping entries
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', /*authenticateToken,*/ async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM shipping');
     res.json(result.rows);
@@ -15,7 +15,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Get shipping info for a specific email
-router.get('/:email', authenticateToken, async (req, res) => {
+router.get('/:email', /*authenticateToken,*/ async (req, res) => {
   const { email } = req.params;
   try {
     const result = await pool.query(
@@ -32,7 +32,7 @@ router.get('/:email', authenticateToken, async (req, res) => {
 });
 
 // Create new shipping entry
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', /*authenticateToken,*/ async (req, res) => {
   const { email, address, postalcode, country } = req.body;
   try {
     const insert = await pool.query(
@@ -50,7 +50,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Update existing shipping info
-router.put('/', authenticateToken, async (req, res) => {
+router.put('/', /*authenticateToken,*/ async (req, res) => {
   const { email, address, postalcode, country } = req.body;
   try {
     const update = await pool.query(
@@ -67,7 +67,7 @@ router.put('/', authenticateToken, async (req, res) => {
 });
 
 // Delete shipping info by email
-router.delete('/:email', authenticateToken, async (req, res) => {
+router.delete('/:email', /*authenticateToken,*/ async (req, res) => {
   const { email } = req.params;
   try {
     const deleted = await pool.query('DELETE FROM shipping WHERE email = $1 RETURNING *', [email]);

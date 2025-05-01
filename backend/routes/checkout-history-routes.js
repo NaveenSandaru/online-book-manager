@@ -7,7 +7,7 @@ import { authenticateToken } from '../middleware/authentication.js';
 const router = express.Router();
 
 // Get all checkout records (optional: admin view)
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', /*authenticateToken,*/ async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM checkout_history ORDER BY checkout_date_and_time DESC');
     res.json(result.rows);
@@ -17,7 +17,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Get checkout history for a specific email
-router.get('/:email', authenticateToken, async (req, res) => {
+router.get('/:email', /*authenticateToken,*/ async (req, res) => {
   const { email } = req.params;
   try {
     const result = await pool.query(
@@ -31,7 +31,7 @@ router.get('/:email', authenticateToken, async (req, res) => {
 });
 
 // Insert new checkout entry
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', /*authenticateToken,*/ async (req, res) => {
   const { email, book_isbn, total_price, qty, checkout_date_and_time } = req.body;
   try {
     const insert = await pool.query(
