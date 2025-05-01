@@ -1,20 +1,19 @@
-// routes/emailVerifications.js
-
 import express from 'express';
-import pool from '../db.js';
+import { PrismaClient } from '@prisma/client';
+import { sendVerificationCode } from '../utils/mailer.js';
 
+const prisma = new PrismaClient();
 const router = express.Router();
 
 // Get verification code for a specific email
 router.get('/:email', async (req, res) => {
   const { email } = req.params;
   try {
-    const result = await pool.query(
-      'SELECT * FROM email_verifications WHERE email = $1',
-      [email]
-    );
-    if (result.rows.length === 0) return res.status(404).json({ error: 'Code not found' });
-    res.json(result.rows[0]);
+    const verification = await prisma.email_verifications.findUnique({
+      where: { email }
+    });
+    if (!verification) return res.status(404).json({ error: 'Code not found' });
+    res.json(verification);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -22,34 +21,68 @@ router.get('/:email', async (req, res) => {
 
 // Create or update verification code
 router.post('/', async (req, res) => {
-  const { email, code } = req.body;
+  const { email } = req.body;
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
   try {
-    const upsert = await pool.query(
-      `INSERT INTO email_verifications (email, code)
-       VALUES ($1, $2)
-       ON CONFLICT (email)
-       DO UPDATE SET code = EXCLUDED.code
-       RETURNING *`,
-      [email, code]
-    );
-    res.status(201).json({ message: 'Code set', data: upsert.rows[0] });
+    // Create or update the verification code in the database
+    const upsert = await prisma.email_verifications.upsert({
+      where: { email },
+      update: { code },
+      create: { email, code },
+    });
+
+    // Send the verification code to the user's email
+    await sendVerificationCode(email, code);
+
+    // Respond to the client
+    res.status(201).json({ message: 'Code set and sent', data: upsert });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+router.post('/verify', async (req, res) => {
+  const { email, code } = req.body;
+  try {
+    const verification = await prisma.email_verifications.findUnique({ where: { email } });
+    
+    // Check if the verification record exists
+    if (!verification) {
+      return res.status(404).json({ error: 'Code not found' });
+    }
+
+    // Check if the code matches
+    if (verification.code !== code) {
+      return res.status(400).json({ error: 'Invalid code' });
+    }
+
+    // Delete the code after successful verification
+    await prisma.email_verifications.delete({ where: { email } });
+
+    res.json({ message: 'Email verified' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // Delete verification code for email
 router.delete('/:email', async (req, res) => {
   const { email } = req.params;
   try {
-    const deleted = await pool.query(
-      'DELETE FROM email_verifications WHERE email = $1 RETURNING *',
-      [email]
-    );
-    if (deleted.rows.length === 0) return res.status(404).json({ error: 'Code not found' });
+    await prisma.email_verifications.delete({ where: { email } });
     res.json({ message: 'Code deleted' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (err.code === 'P2025') {
+      res.status(404).json({ error: 'Code not found' });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
   }
 });
 

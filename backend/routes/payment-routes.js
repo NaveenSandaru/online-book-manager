@@ -20,15 +20,12 @@ router.get('/', (req, res) => {
 router.post('/', (req, res) => {
   const {
     email,
-    address,
-    country,
-    zip_code,
     payment_method,
     card_number,
     exp_date
   } = req.body;
 
-  if (!email || !address || !country || !zip_code || !payment_method || !card_number || !exp_date) {
+  if (!email || !payment_method || !card_number || !exp_date) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
@@ -37,9 +34,6 @@ router.post('/', (req, res) => {
 
   const billing = {
     email,
-    address,
-    country,
-    zip_code,
     payment_method,
     card_number: maskedCard,
     exp_date
