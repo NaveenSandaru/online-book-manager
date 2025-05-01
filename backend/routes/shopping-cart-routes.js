@@ -1,54 +1,67 @@
+// routes/shoppingCart.js
+
 import express from 'express';
-import pool from '../db.js';
-import bcrypt from 'bcrypt';
-import { authenticateToken } from '../middleware/authentication.js';
+import cookieParser from 'cookie-parser';
 
 const router = express.Router();
+router.use(cookieParser());
 
-router.get('/', /*authenticateToken,*/ async (req, res) => {
-    try {
-        const response = await pool.query('SELECT * FROM counsellors');
-        res.json(response.rows);
-    } catch (err) {
-        res.status(500).json(err.message);
-    }
+const COOKIE_NAME = 'shopping_cart';
+const MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// Get cart
+router.get('/', (req, res) => {
+  const cart = req.cookies[COOKIE_NAME];
+  if (!cart) return res.json({ message: 'Cart is empty' });
+  res.json(JSON.parse(cart));
 });
 
-router.get('/:id', /*authenticateToken,*/ async (req, res) => {
-    try {
-        const response = await pool.query('SELECT * FROM counsellors WHERE id = $1', [req.params.id]);
-        res.json(response.rows);
-    } catch (err) {
-        res.status(500).json(er.message);
-    }
+// Add or update item in cart
+router.post('/', (req, res) => {
+  const { email, isbn, title, quantity, unit_price } = req.body;
+
+  if (!email || !isbn || !title || !quantity || !unit_price) {
+    return res.status(400).json({ error: 'Missing fields' });
+  }
+
+  let cart = req.cookies[COOKIE_NAME] ? JSON.parse(req.cookies[COOKIE_NAME]) : {
+    email,
+    items: [],
+    total: 0,
+    number_of_books: 0
+  };
+
+  // If email mismatches existing cart, reject
+  if (cart.email !== email) {
+    return res.status(400).json({ error: 'Email mismatch with existing cart' });
+  }
+
+  // Check if item already exists
+  const existingItem = cart.items.find(item => item.isbn === isbn);
+  if (existingItem) {
+    existingItem.quantity += quantity;
+  } else {
+    cart.items.push({ isbn, title, quantity, unit_price });
+  }
+
+  // Recalculate total and number_of_books
+  cart.total = cart.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
+  cart.number_of_books = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Set cookie
+  res.cookie(COOKIE_NAME, JSON.stringify(cart), {
+    maxAge: MAX_AGE,
+    httpOnly: true, // Prevent client-side JS from modifying it
+    sameSite: 'lax'
+  });
+
+  res.json({ message: 'Cart updated', cart });
 });
 
-router.put('/', /*authenticateToken,*/ async (req, res) => {
-    try {
-        await pool.query('UPDATE counsellors SET password = $1, name = $2, email = $3, nic = $4, phone = $5 WHERE id = $6', [req.body.password, req.body.name, req.body.email, req.body.nic, req.body.phone, req.body.id]);
-        res.json(true);
-    } catch (error) {
-        res.json(false);
-    }
-});
-
-router.post('/', /*authenticateToken,*/ async (req, res) => {
-    try {
-        const hashedPassword = await bcrypt.hash(req.body.password, 10);
-        await pool.query('INSERT INTO counsellors (id, password, name, email, nic, phone) VALUES ($1,$2,$3,$4,$5,$6)',[req.body.id, hashedPassword, req.body.name, req.body.email, req.body.nic, req.body.phone]);
-        res.json(true);
-    } catch (error) {
-        res.json(false);
-    }
-});
-
-router.delete('/:id', /*authenticateToken,*/ async (req, res) => {
-    try {
-        await pool.query('DELETE FROM counsellors WHERE id = $1', [req.params.id]);
-        res.json(true);
-    } catch (error) {
-        res.json(false);
-    }
+// Clear cart
+router.delete('/', (req, res) => {
+  res.clearCookie(COOKIE_NAME);
+  res.json({ message: 'Cart cleared' });
 });
 
 export default router;

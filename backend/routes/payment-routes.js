@@ -1,54 +1,63 @@
+// routes/billingInfo.js
+
 import express from 'express';
-import pool from '../db.js';
-import bcrypt from 'bcrypt';
-import { authenticateToken } from '../middleware/authentication.js';
+import cookieParser from 'cookie-parser';
 
 const router = express.Router();
+router.use(cookieParser());
 
-router.get('/', /*authenticateToken,*/ async (req, res) => {
-    try {
-        const response = await pool.query('SELECT * FROM counsellors');
-        res.json(response.rows);
-    } catch (err) {
-        res.status(500).json(err.message);
-    }
+const COOKIE_NAME = 'billing_info';
+const MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// Get billing info
+router.get('/', (req, res) => {
+  const billing = req.cookies[COOKIE_NAME];
+  if (!billing) return res.json({ message: 'No billing info saved' });
+  res.json(JSON.parse(billing));
 });
 
-router.get('/:id', /*authenticateToken,*/ async (req, res) => {
-    try {
-        const response = await pool.query('SELECT * FROM counsellors WHERE id = $1', [req.params.id]);
-        res.json(response.rows);
-    } catch (err) {
-        res.status(500).json(er.message);
-    }
+// Save billing info (masked + non-sensitive only)
+router.post('/', (req, res) => {
+  const {
+    email,
+    address,
+    country,
+    zip_code,
+    payment_method,
+    card_number,
+    exp_date
+  } = req.body;
+
+  if (!email || !address || !country || !zip_code || !payment_method || !card_number || !exp_date) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // Mask card number
+  const maskedCard = card_number.replace(/\d(?=\d{4})/g, '*');
+
+  const billing = {
+    email,
+    address,
+    country,
+    zip_code,
+    payment_method,
+    card_number: maskedCard,
+    exp_date
+  };
+
+  res.cookie(COOKIE_NAME, JSON.stringify(billing), {
+    maxAge: MAX_AGE,
+    httpOnly: true,
+    sameSite: 'lax'
+  });
+
+  res.json({ message: 'Billing info saved (masked)', billing });
 });
 
-router.put('/', /*authenticateToken,*/ async (req, res) => {
-    try {
-        await pool.query('UPDATE counsellors SET password = $1, name = $2, email = $3, nic = $4, phone = $5 WHERE id = $6', [req.body.password, req.body.name, req.body.email, req.body.nic, req.body.phone, req.body.id]);
-        res.json(true);
-    } catch (error) {
-        res.json(false);
-    }
-});
-
-router.post('/', /*authenticateToken,*/ async (req, res) => {
-    try {
-        const hashedPassword = await bcrypt.hash(req.body.password, 10);
-        await pool.query('INSERT INTO counsellors (id, password, name, email, nic, phone) VALUES ($1,$2,$3,$4,$5,$6)',[req.body.id, hashedPassword, req.body.name, req.body.email, req.body.nic, req.body.phone]);
-        res.json(true);
-    } catch (error) {
-        res.json(false);
-    }
-});
-
-router.delete('/:id', /*authenticateToken,*/ async (req, res) => {
-    try {
-        await pool.query('DELETE FROM counsellors WHERE id = $1', [req.params.id]);
-        res.json(true);
-    } catch (error) {
-        res.json(false);
-    }
+// Clear billing info
+router.delete('/', (req, res) => {
+  res.clearCookie(COOKIE_NAME);
+  res.json({ message: 'Billing info cleared' });
 });
 
 export default router;
