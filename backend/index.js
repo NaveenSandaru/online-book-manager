@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 
 //import endpoint routers
 import authRouter from './auth-routes/user-auth-route.js';
+import bookRouter from './routes/book-routes.js';
 import checkoutHistoryRouter from './routes/checkout-history-routes.js';
 import emailVerificationRouter from './routes/email-verification-routes.js';
 import paymentRouter from './routes/payment-routes.js';
@@ -25,6 +26,7 @@ app.use(cookieParser());
 
 //configure routers to redirect to endpoints
 app.use('/auth', authRouter);
+app.use('/books',bookRouter);
 app.use('/checkout-history', checkoutHistoryRouter);
 app.use('/email-verification', emailVerificationRouter);
 app.use('/payments', paymentRouter);
