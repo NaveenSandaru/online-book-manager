@@ -67,4 +67,38 @@ router.get('/search', /*authenticateToken,*/ async (req, res) => {
   }
 });
 
+router.get('/:id', /*authenticateToken,*/ async (req, res) => {
+  const { id } = req.params;
+  
+  // Check cache first
+  const cacheKey = `book-${id}`;
+  if (bookCache.has(cacheKey)) {
+    return res.json(bookCache.get(cacheKey));
+  }
+  
+  try {
+    const response = await axios.get(`https://www.googleapis.com/books/v1/volumes/${id}`);
+    
+    // Format the book data
+    const item = response.data;
+    const book = {
+      id: item.id,
+      title: item.volumeInfo.title,
+      authors: item.volumeInfo.authors || [],
+      price: derivePriceFromId(item.id),
+      description: item.volumeInfo.description || 'No description available.',
+      thumbnail: item.volumeInfo.imageLinks?.thumbnail || '',
+      stock: Math.floor(Math.random() * 20) + 1
+    };
+    
+    // Cache the result
+    bookCache.set(cacheKey, book);
+    
+    res.json(book);
+  } catch (err) {
+    console.error('Error fetching book:', err);
+    res.status(500).json({ error: 'Failed to fetch book details' });
+  }
+});
+
 export default router;

@@ -1,0 +1,8 @@
+{
+  "/auth/login/page": "app/auth/login/page.js",
+  "/api/shopping-cart/route": "app/api/shopping-cart/route.js",
+  "/page": "app/page.js",
+  "/api/books/route": "app/api/books/route.js",
+  "/cart/page": "app/cart/page.js",
+  "/books/page": "app/books/page.js"
+}
