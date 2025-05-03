@@ -65,12 +65,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       setIsAuthenticated(true);
       
-      // If we have a local cart, we should preserve it or merge it with server cart
-      // This is a simplified version - in a real app, you'd want to merge with the server cart
       if (localCart) {
         localStorage.setItem('cart', localCart);
       }
-      
       toast.success('Logged in successfully');
       return true;
     } catch (error) {
@@ -85,16 +82,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await axios.post('/api/user/register', { name, email, password });
       toast.success('Registration successful! Please verify your email.');
       return true;
-    } catch (error) {
-      console.error('Registration failed:', error);
+    } catch (error:any) {
+      console.error('Registration failed:', error.status);
+      if(error.status == 409){
+        toast.error('User already registered. Please Login.');
+        return false;
+      }
       toast.error('Registration failed. Please try again.');
       return false;
     }
   };
 
-  const verifyEmail = async (email: string, code: string): Promise<boolean> => {
+  const verifyEmail = async (email: string): Promise<boolean> => {
     try {
-      await axios.post('/api/email-verification/verify', { email, code });
+      await axios.post('/api/email-verification/verify', { email });
       toast.success('Email verified successfully. You can now log in.');
       return true;
     } catch (error) {
