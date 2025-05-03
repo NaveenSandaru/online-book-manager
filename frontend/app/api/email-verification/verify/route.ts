@@ -39,7 +39,16 @@ export async function POST(request: Request) {
       message: data.message || 'Email verified successfully',
       verified: data.verified !== undefined ? data.verified : true
     });
-    
+
+    const data = await response.json();
+    if(data.message == "Code set and sent"){
+      return NextResponse.json({ 
+        message: 'Email verified successfully'
+      });
+    }
+    else{
+      throw new Error('Error setting and sending code');
+    }
   } catch (error) {
     console.error('Email verification error:', error);
     return NextResponse.json(

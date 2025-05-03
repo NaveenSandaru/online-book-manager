@@ -181,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const verifyEmail = async (email: string, code: string): Promise<boolean> => {
+  const verifyEmail = async (email: string): Promise<boolean> => {
     try {
       const { data } = await axios.post('/api/email-verification/verify', { email, code });
       
