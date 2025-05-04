@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useCheckout } from './CheckoutContext';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { FaHistory, FaSave } from 'react-icons/fa';
+import { FaHistory } from 'react-icons/fa';
 
 const shippingSchema = z.object({
   address: z.string().min(1, 'Address is required'),
@@ -23,11 +23,9 @@ export default function ShippingForm() {
     shippingInfo, 
     updateShippingInfo, 
     savedShippingInfo, 
-    loadSavedShippingInfo,
-    saveShippingInfoToServer 
+    loadSavedShippingInfo
   } = useCheckout();
   const { isAuthenticated } = useAuth();
-  const [showSaveOption, setShowSaveOption] = useState(false);
   
   const {
     register,
@@ -54,9 +52,6 @@ export default function ShippingForm() {
         // Use timeout to avoid calling too frequently during typing
         const timeoutId = setTimeout(() => {
           updateShippingInfo(getValues() as ShippingFormValues);
-          if (isAuthenticated) {
-            setShowSaveOption(true);
-          }
         }, 500);
         
         return () => clearTimeout(timeoutId);
@@ -64,42 +59,24 @@ export default function ShippingForm() {
     });
     
     return () => subscription.unsubscribe();
-  }, [watch, updateShippingInfo, getValues, isAuthenticated]);
+  }, [watch, updateShippingInfo, getValues]);
 
   const handleLoadSavedInfo = async () => {
     await loadSavedShippingInfo();
-  };
-
-  const handleSaveInfo = async () => {
-    await saveShippingInfoToServer();
-    setShowSaveOption(false);
   };
 
   return (
     <form className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">Shipping Information</h2>
-        {isAuthenticated && (
-          <div className="flex items-center space-x-2">
-            {savedShippingInfo && (
-              <button 
-                type="button"
-                onClick={handleLoadSavedInfo}
-                className="text-primary-600 flex items-center text-sm"
-              >
-                <FaHistory className="mr-1" /> Load Saved
-              </button>
-            )}
-            {showSaveOption && (
-              <button 
-                type="button"
-                onClick={handleSaveInfo}
-                className="bg-primary-600 text-white px-2 py-1 rounded text-sm flex items-center"
-              >
-                <FaSave className="mr-1" /> Save for Later
-              </button>
-            )}
-          </div>
+        {isAuthenticated && savedShippingInfo && (
+          <button 
+            type="button"
+            onClick={handleLoadSavedInfo}
+            className="text-primary-600 flex items-center text-sm"
+          >
+            <FaHistory className="mr-1" /> Load Saved
+          </button>
         )}
       </div>
       

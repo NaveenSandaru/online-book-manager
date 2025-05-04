@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCheckout } from './CheckoutContext';
-import { FaCcVisa, FaCcMastercard, FaCcAmex, FaCcDiscover, FaCreditCard, FaHistory, FaSave } from 'react-icons/fa';
+import { FaCcVisa, FaCcMastercard, FaCcAmex, FaCcDiscover, FaCreditCard, FaHistory } from 'react-icons/fa';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -32,11 +32,9 @@ export default function PaymentForm() {
     paymentInfo, 
     updatePaymentInfo, 
     savedPaymentInfo, 
-    loadSavedPaymentInfo,
-    savePaymentInfoToServer 
+    loadSavedPaymentInfo
   } = useCheckout();
   const { isAuthenticated } = useAuth();
-  const [showSaveOption, setShowSaveOption] = useState(false);
   
   const {
     register,
@@ -84,9 +82,6 @@ export default function PaymentForm() {
         // Use timeout to avoid calling too frequently during typing
         const timeoutId = setTimeout(() => {
           updatePaymentInfo(getValues() as PaymentFormValues);
-          if (isAuthenticated) {
-            setShowSaveOption(true);
-          }
         }, 500);
         
         return () => clearTimeout(timeoutId);
@@ -94,7 +89,7 @@ export default function PaymentForm() {
     });
     
     return () => subscription.unsubscribe();
-  }, [watch, updatePaymentInfo, getValues, isAuthenticated]);
+  }, [watch, updatePaymentInfo, getValues]);
 
   // Function to determine card type based on first digits
   const getCardType = (number: string) => {
@@ -113,36 +108,18 @@ export default function PaymentForm() {
     await loadSavedPaymentInfo();
   };
 
-  const handleSaveInfo = async () => {
-    await savePaymentInfoToServer();
-    setShowSaveOption(false);
-  };
-
   return (
     <form className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">Payment Information</h2>
-        {isAuthenticated && (
-          <div className="flex items-center space-x-2">
-            {savedPaymentInfo && (
-              <button 
-                type="button"
-                onClick={handleLoadSavedInfo}
-                className="text-primary-600 flex items-center text-sm"
-              >
-                <FaHistory className="mr-1" /> Load Saved
-              </button>
-            )}
-            {showSaveOption && (
-              <button 
-                type="button"
-                onClick={handleSaveInfo}
-                className="bg-primary-600 text-white px-2 py-1 rounded text-sm flex items-center"
-              >
-                <FaSave className="mr-1" /> Save for Later
-              </button>
-            )}
-          </div>
+        {isAuthenticated && savedPaymentInfo && (
+          <button 
+            type="button"
+            onClick={handleLoadSavedInfo}
+            className="text-primary-600 flex items-center text-sm"
+          >
+            <FaHistory className="mr-1" /> Load Saved
+          </button>
         )}
       </div>
       

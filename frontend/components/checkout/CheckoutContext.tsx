@@ -136,10 +136,10 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       
       console.log('Shipping info saved:', response.data);
       setSavedShippingInfo(true);
-      toast.success('Shipping information saved for future checkouts');
+      // Remove toast notification since saving is now automatic
     } catch (error) {
       console.error('Failed to save shipping info:', error);
-      toast.error('Could not save shipping information');
+      // Don't show error to user since saving is automatic
     }
   };
 
@@ -156,10 +156,10 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       
       console.log('Payment info saved:', response.data);
       setSavedPaymentInfo(true);
-      toast.success('Payment information saved for future checkouts');
+      // Remove toast notification since saving is now automatic
     } catch (error) {
       console.error('Failed to save payment info:', error);
-      toast.error('Could not save payment information');
+      // Don't show error to user since saving is automatic
     }
   };
 
@@ -191,13 +191,19 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         return false;
       }
       
-      // Save shipping and payment info if user is authenticated
-      if (isAuthenticated && !savedShippingInfo) {
-        await saveShippingInfoToServer();
-      }
-      
-      if (isAuthenticated && !savedPaymentInfo) {
-        await savePaymentInfoToServer();
+      // Always save shipping and payment info if user is authenticated
+      // Even if we already have saved info, update it with latest values
+      if (isAuthenticated) {
+        try {
+          await saveShippingInfoToServer();
+          await savePaymentInfoToServer();
+          
+          // Don't show toast messages since this is now automatic
+          console.log('Shipping and payment info saved automatically');
+        } catch (error) {
+          console.error('Error saving shipping or payment info:', error);
+          // Continue checkout process even if saving fails
+        }
       }
       
       console.log('Placing order with items:', cartItems);
