@@ -78,7 +78,7 @@ export function LoginForm() {
         router.push(redirectPath);
       } else if (result.needsVerification) {
         setNeedsVerification(true);
-        setUserEmail(result.email);
+        setUserEmail(result.email?result.email:'');
       } else {
         setLoginError(result.message || 'Invalid email or password. Please try again.');
       }
