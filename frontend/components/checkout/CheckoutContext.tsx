@@ -34,8 +34,8 @@ interface CheckoutContextType {
   isSubmitting: boolean;
   savedShippingInfo: boolean;
   savedPaymentInfo: boolean;
-  loadSavedShippingInfo: () => Promise<void>;
-  loadSavedPaymentInfo: () => Promise<void>;
+  loadSavedShippingInfo: () => Promise<boolean>;
+  loadSavedPaymentInfo: () => Promise<boolean>;
   saveShippingInfoToServer: () => Promise<void>;
   savePaymentInfoToServer: () => Promise<void>;
 }
@@ -77,46 +77,81 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, user]);
 
+  // Add a function to get the backend URL
+  const getBackendUrl = () => {
+    return process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+  };
+
   const loadSavedShippingInfo = async () => {
-    if (!isAuthenticated || !user) return;
+    if (!isAuthenticated || !user) return false;
 
     try {
-      const response = await axios.get(`/api/shipping?email=${user.email}`, { withCredentials: true });
-      if (response.data) {
+      // Properly encode the email parameter
+      const encodedEmail = encodeURIComponent(user.email);
+      console.log(`Fetching shipping info for: ${encodedEmail}`);
+      
+      // Use query parameter for email with proper encoding
+      const response = await axios.get(`/api/shipping?email=${encodedEmail}`, { 
+        withCredentials: true,
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      if (response.data && !response.data.error) {
         console.log('Loading saved shipping info:', response.data);
         // Convert from backend format to our format
         setShippingInfo({
-          address: response.data.address || '',
-          city: response.data.address?.split(',')[0] || '',
-          state: response.data.address?.split(',')[1]?.trim() || '',
+          address: response.data.address?.split('\n')[0] || '',
+          city: response.data.address?.split('\n')[1]?.split(',')[0]?.trim() || '',
+          state: response.data.address?.split('\n')[1]?.split(',')[1]?.trim() || '',
           postalCode: response.data.postalcode || '',
           country: response.data.country || ''
         });
         setSavedShippingInfo(true);
+        return true;
       }
+      return false;
     } catch (error) {
       console.error('Failed to load saved shipping info:', error);
       // Don't show error toast to user - just quietly fail
+      return false;
     }
   };
 
   const loadSavedPaymentInfo = async () => {
+    if (!isAuthenticated || !user) return false;
+    
     try {
-      const response = await axios.get('/api/payment', { withCredentials: true });
-      if (response.data && !response.data.message) {
+      console.log('Fetching payment info');
+      
+      // Use the payment endpoint without email parameter but with no-cache headers
+      const response = await axios.get(`/api/payment`, { 
+        withCredentials: true,
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      if (response.data && !response.data.message && !response.data.error) {
         console.log('Loading saved payment info:', response.data);
         // Convert from backend format to our format
         setPaymentInfo({
           cardNumber: response.data.card_number || '',
-          cardHolder: response.data.email || '',
+          cardHolder: response.data.email || user.email || '',
           expiryDate: response.data.exp_date || '',
           cvv: '' // Never stored on server
         });
         setSavedPaymentInfo(true);
+        return true;
       }
+      return false;
     } catch (error) {
       console.error('Failed to load saved payment info:', error);
       // Don't show error toast to user - just quietly fail
+      return false;
     }
   };
 
@@ -126,8 +161,10 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     try {
       // Format address for backend
       const addressLine = `${shippingInfo.city}, ${shippingInfo.state}`;
+      const backendUrl = getBackendUrl();
       
-      const response = await axios.post('/api/shipping', {
+      // Use Next.js API route instead of direct backend access
+      const response = await axios.post(`/api/shipping`, {
         email: user.email,
         address: `${shippingInfo.address}\n${addressLine}`,
         postalcode: shippingInfo.postalCode,
@@ -147,7 +184,9 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     if (!isAuthenticated || !user) return;
     
     try {
-      const response = await axios.post('/api/payment', {
+      const backendUrl = getBackendUrl();
+      // Use Next.js API route instead of direct backend access
+      const response = await axios.post(`/api/payment`, {
         email: user.email,
         payment_method: 'card',
         card_number: paymentInfo.cardNumber,
@@ -251,9 +290,13 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
           
           console.log('Checkout history data to be sent:', orderHistoryData);
           
-          // Send data to the API
-          const response = await axios.post('/api/checkout-history', orderHistoryData, { 
-            withCredentials: true 
+          // Send data directly to the backend instead of through our API route
+          const backendUrl = getBackendUrl();
+          const response = await axios.post(`${backendUrl}/checkout-history/`, orderHistoryData, { 
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'application/json'
+            }
           });
           
           console.log('Checkout history response:', response.data);

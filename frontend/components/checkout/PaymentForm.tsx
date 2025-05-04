@@ -34,7 +34,8 @@ export default function PaymentForm() {
     savedPaymentInfo, 
     loadSavedPaymentInfo
   } = useCheckout();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const [dataLoaded, setDataLoaded] = useState(false);
   
   const {
     register,
@@ -52,6 +53,22 @@ export default function PaymentForm() {
 
   const cardNumber = watch('cardNumber', '');
   
+  // Load saved payment info when component mounts
+  useEffect(() => {
+    const autoLoadSavedInfo = async () => {
+      if (isAuthenticated && user && !dataLoaded) {
+        try {
+          await loadSavedPaymentInfo();
+          setDataLoaded(true);
+        } catch (error) {
+          console.error('Failed to auto-load payment info:', error);
+        }
+      }
+    };
+
+    autoLoadSavedInfo();
+  }, [isAuthenticated, user, loadSavedPaymentInfo, dataLoaded]);
+
   // Reset form when payment info changes (e.g., when saved info is loaded)
   useEffect(() => {
     reset(paymentInfo);

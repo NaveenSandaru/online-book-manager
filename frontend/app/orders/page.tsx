@@ -29,9 +29,22 @@ export default function OrderHistoryPage() {
 
       try {
         setIsLoading(true);
-        const { data } = await axios.get(`/api/checkout-history/${user.email}`);
+        console.log(`Fetching order history for: ${user.email}`);
+        
+        // Use the Next.js API route with query parameter
+        const encodedEmail = encodeURIComponent(user.email);
+        const { data } = await axios.get(`/api/checkout-history?email=${encodedEmail}`, {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
         console.log('Order history data:', data);
         
+        // Ensure total_price is a number in each order
         const processedOrders = data.map((order: any) => ({
           ...order,
           total_price: typeof order.total_price === 'string' 
@@ -51,18 +64,22 @@ export default function OrderHistoryPage() {
     fetchOrderHistory();
   }, [isAuthenticated, user, router]);
 
+  // Format price safely
   const formatPrice = (price: number | string) => {
     if (price === null || price === undefined) return '0.00';
     
+    // Parse string to float if it's a string
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
     
+    // Check if it's a valid number
     if (isNaN(numPrice)) return '0.00';
     
+    // Format with 2 decimal places
     return numPrice.toFixed(2);
   };
 
   if (!isAuthenticated) {
-    return null;
+    return null; // Will redirect in useEffect
   }
 
   return (

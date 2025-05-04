@@ -25,7 +25,8 @@ export default function ShippingForm() {
     savedShippingInfo, 
     loadSavedShippingInfo
   } = useCheckout();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const [dataLoaded, setDataLoaded] = useState(false);
   
   const {
     register,
@@ -39,6 +40,22 @@ export default function ShippingForm() {
     defaultValues: shippingInfo,
     mode: 'onBlur', // Only validate on blur, not while typing
   });
+
+  // Load saved shipping info when component mounts
+  useEffect(() => {
+    const autoLoadSavedInfo = async () => {
+      if (isAuthenticated && user && !dataLoaded) {
+        try {
+          await loadSavedShippingInfo();
+          setDataLoaded(true);
+        } catch (error) {
+          console.error('Failed to auto-load shipping info:', error);
+        }
+      }
+    };
+
+    autoLoadSavedInfo();
+  }, [isAuthenticated, user, loadSavedShippingInfo, dataLoaded]);
 
   // Reset form when shipping info changes (e.g., when saved info is loaded)
   useEffect(() => {

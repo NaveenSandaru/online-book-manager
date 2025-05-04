@@ -21,7 +21,7 @@ export async function GET(
     // For now, we'll just make the API call to the backend
     
     const backendUrl = getBackendUrl();
-    const endpoint = `${backendUrl}/checkout-history`;
+    const endpoint = `${backendUrl}/checkout-history/${email}`;
     
     console.log(`Fetching order history from backend at: ${endpoint}`);
     

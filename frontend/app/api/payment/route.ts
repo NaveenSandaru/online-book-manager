@@ -10,12 +10,13 @@ const getBackendUrl = () => {
 export async function GET() {
   try {
     const backendUrl = getBackendUrl();
-    const endpoint = `${backendUrl}/payment`;
+    const endpoint = `${backendUrl}/payments/`;
     
     console.log(`Fetching payment info from: ${endpoint}`);
     
     // The backend will check cookies and return appropriate data
     const response = await axios.get(endpoint, { withCredentials: true });
+    console.log(response.data);
     return NextResponse.json(response.data);
   } catch (error: any) {
     console.error('Error fetching payment info:', error);
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
     
     const backendUrl = getBackendUrl();
-    const endpoint = `${backendUrl}/payment`;
+    const endpoint = `${backendUrl}/payments`;
     
     console.log(`Saving payment info to: ${endpoint}`);
     

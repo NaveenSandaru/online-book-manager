@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     }
     
     const backendUrl = getBackendUrl();
-    const endpoint = `${backendUrl}/shipping/${email}`;
+    const endpoint = `${backendUrl}/shipping-info/${email}`;
     
     console.log(`Fetching shipping info from: ${endpoint}`);
     
