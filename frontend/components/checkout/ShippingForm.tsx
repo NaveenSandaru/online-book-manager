@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCheckout } from './CheckoutContext';
+import { useEffect } from 'react';
 
 const shippingSchema = z.object({
   address: z.string().min(1, 'Address is required'),
@@ -22,17 +23,32 @@ export default function ShippingForm() {
     register,
     handleSubmit,
     formState: { errors },
+    watch,
+    getValues,
   } = useForm<ShippingFormValues>({
     resolver: zodResolver(shippingSchema),
     defaultValues: shippingInfo,
+    mode: 'onBlur', // Only validate on blur, not while typing
   });
 
-  const onSubmit = (data: ShippingFormValues) => {
-    updateShippingInfo(data);
-  };
+  // Auto-save form values on change
+  useEffect(() => {
+    const subscription = watch((value, { name }) => {
+      if (name && value[name] !== undefined) {
+        // Use timeout to avoid calling too frequently during typing
+        const timeoutId = setTimeout(() => {
+          updateShippingInfo(getValues() as ShippingFormValues);
+        }, 500);
+        
+        return () => clearTimeout(timeoutId);
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [watch, updateShippingInfo, getValues]);
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form className="space-y-4">
       <h2 className="text-xl font-semibold mb-4">Shipping Information</h2>
       
       <div>
@@ -100,7 +116,7 @@ export default function ShippingForm() {
             {...register('country')}
           >
             <option value="">Select country</option>
-            <option value="IN">Srilanka</option>
+            <option value="LK">Sri Lanka</option>
             <option value="US">United States</option>
             <option value="CA">Canada</option>
             <option value="UK">United Kingdom</option>

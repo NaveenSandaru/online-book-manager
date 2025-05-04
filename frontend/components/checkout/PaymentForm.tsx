@@ -5,21 +5,23 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCheckout } from './CheckoutContext';
 import { FaCcVisa, FaCcMastercard, FaCcAmex, FaCcDiscover, FaCreditCard } from 'react-icons/fa';
+import { useEffect } from 'react';
 
+// Define more flexible schemas that allow for input formatting
 const paymentSchema = z.object({
   cardNumber: z
     .string()
     .min(1, 'Card number is required')
-    .regex(/^\d{16}$/, 'Card number must be 16 digits'),
+    .refine((val) => /^\d{16}$/.test(val.replace(/\s/g, '')), 'Card number must be 16 digits'),
   cardHolder: z.string().min(1, 'Cardholder name is required'),
   expiryDate: z
     .string()
     .min(1, 'Expiry date is required')
-    .regex(/^(0[1-9]|1[0-2])\/\d{2}$/, 'Expiry date must be in MM/YY format'),
+    .refine((val) => /^(0[1-9]|1[0-2])\/\d{2}$/.test(val), 'Expiry date must be in MM/YY format'),
   cvv: z
     .string()
     .min(1, 'CVV is required')
-    .regex(/^\d{3,4}$/, 'CVV must be 3 or 4 digits'),
+    .refine((val) => /^\d{3,4}$/.test(val), 'CVV must be 3 or 4 digits'),
 });
 
 type PaymentFormValues = z.infer<typeof paymentSchema>;
@@ -32,9 +34,12 @@ export default function PaymentForm() {
     handleSubmit,
     formState: { errors },
     watch,
+    setValue,
+    getValues,
   } = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentSchema),
     defaultValues: paymentInfo,
+    mode: 'onBlur', // Only validate on blur, not while typing
   });
 
   const cardNumber = watch('cardNumber', '');
@@ -43,10 +48,44 @@ export default function PaymentForm() {
     updatePaymentInfo(data);
   };
 
+  // Format card number with spaces
+  const formatCardNumber = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '');
+    const formattedValue = digitsOnly.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+    return formattedValue.substring(0, 19); // 16 digits + 3 spaces
+  };
+
+  // Format expiry date
+  const formatExpiryDate = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '');
+    if (digitsOnly.length >= 3) {
+      return `${digitsOnly.substring(0, 2)}/${digitsOnly.substring(2, 4)}`;
+    } else if (digitsOnly.length === 2) {
+      return `${digitsOnly}/`;
+    }
+    return digitsOnly;
+  };
+
+  // Save form data whenever values change
+  useEffect(() => {
+    const subscription = watch((value, { name }) => {
+      if (name && value[name] !== undefined) {
+        // Use timeout to avoid calling too frequently during typing
+        const timeoutId = setTimeout(() => {
+          updatePaymentInfo(getValues() as PaymentFormValues);
+        }, 500);
+        
+        return () => clearTimeout(timeoutId);
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [watch, updatePaymentInfo, getValues]);
+
   // Function to determine card type based on first digits
   const getCardType = (number: string) => {
-    const firstDigit = number.charAt(0);
-    const firstTwoDigits = number.substring(0, 2);
+    const firstDigit = number.replace(/\D/g, '').charAt(0);
+    const firstTwoDigits = number.replace(/\D/g, '').substring(0, 2);
     
     if (firstDigit === '4') return <FaCcVisa className="text-blue-600" size={24} />;
     if (['51', '52', '53', '54', '55'].includes(firstTwoDigits)) return <FaCcMastercard className="text-orange-600" size={24} />;
@@ -56,13 +95,8 @@ export default function PaymentForm() {
     return <FaCreditCard className="text-gray-400" size={24} />;
   };
 
-  // Format card number with spaces for display
-  const formatCardNumber = (value: string) => {
-    return value.replace(/\s/g, '').match(/.{1,4}/g)?.join(' ') || '';
-  };
-
   return (
-    <form onChange={handleSubmit(onSubmit)} className="space-y-4">
+    <form className="space-y-4">
       <h2 className="text-xl font-semibold mb-4">Payment Information</h2>
       
       <div>
@@ -76,6 +110,12 @@ export default function PaymentForm() {
             placeholder="1234 5678 9012 3456"
             className="input-field pr-12"
             {...register('cardNumber')}
+            onChange={(e) => {
+              const formattedValue = formatCardNumber(e.target.value);
+              e.target.value = formattedValue;
+              setValue('cardNumber', formattedValue, { shouldValidate: false });
+            }}
+            maxLength={19}
           />
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
             {getCardType(cardNumber)}
@@ -109,6 +149,12 @@ export default function PaymentForm() {
             placeholder="01/25"
             className="input-field"
             {...register('expiryDate')}
+            onChange={(e) => {
+              const formattedValue = formatExpiryDate(e.target.value);
+              e.target.value = formattedValue;
+              setValue('expiryDate', formattedValue, { shouldValidate: false });
+            }}
+            maxLength={5}
           />
           {errors.expiryDate && <p className="form-error">{errors.expiryDate.message}</p>}
         </div>
@@ -123,6 +169,12 @@ export default function PaymentForm() {
             placeholder="123"
             className="input-field"
             {...register('cvv')}
+            onChange={(e) => {
+              const digitsOnly = e.target.value.replace(/\D/g, '');
+              e.target.value = digitsOnly.substring(0, 4);
+              setValue('cvv', e.target.value, { shouldValidate: false });
+            }}
+            maxLength={4}
           />
           {errors.cvv && <p className="form-error">{errors.cvv.message}</p>}
         </div>

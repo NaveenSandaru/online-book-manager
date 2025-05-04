@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -78,9 +78,17 @@ export function LoginForm() {
         router.push(redirectPath);
       } else if (result.needsVerification) {
         setNeedsVerification(true);
+<<<<<<< Updated upstream
         setUserEmail(result.email?result.email:'');
+=======
+        if (result.email) {
+          setUserEmail(result.email);
+        } else {
+          setUserEmail(data.email);
+        }
+>>>>>>> Stashed changes
       } else {
-        setLoginError(result.message || 'Invalid email or password. Please try again.');
+        setLoginError(result.message || 'Invalid email or password');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -98,14 +106,8 @@ export function LoginForm() {
       const success = await verifyEmail(userEmail, data.code);
       
       if (success) {
-        // After verification, try to log in again
-        const loginResult = await login(userEmail, '', false); // Password isn't needed here as we'll be redirected to login again
-        if (loginResult.success) {
-          router.push(redirectPath);
-        } else {
-          setNeedsVerification(false);
-          setLoginError('Verification successful. Please log in again.');
-        }
+        router.push(`/auth/login?redirect=${encodeURIComponent(redirectPath.slice(1))}`);
+        setLoginError('Verification successful. Please log in again.');
       } else {
         setLoginError('Invalid verification code. Please try again.');
       }
@@ -117,7 +119,7 @@ export function LoginForm() {
     }
   };
 
-  const resendVerificationCode = async () => {
+  const resendVerificationCode = useCallback(async () => {
     try {
       setIsSubmitting(true);
       const response = await fetch('/api/email-verification', {
@@ -141,7 +143,7 @@ export function LoginForm() {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [userEmail]);
 
   if (needsVerification) {
     return (
