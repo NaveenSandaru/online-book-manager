@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
@@ -32,6 +32,12 @@ interface CheckoutContextType {
   prevStep: () => void;
   placeOrder: () => Promise<boolean>;
   isSubmitting: boolean;
+  savedShippingInfo: boolean;
+  savedPaymentInfo: boolean;
+  loadSavedShippingInfo: () => Promise<void>;
+  loadSavedPaymentInfo: () => Promise<void>;
+  saveShippingInfoToServer: () => Promise<void>;
+  savePaymentInfoToServer: () => Promise<void>;
 }
 
 const defaultShippingInfo: ShippingInfo = {
@@ -56,17 +62,115 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const [shippingInfo, setShippingInfo] = useState<ShippingInfo>(defaultShippingInfo);
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo>(defaultPaymentInfo);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [savedShippingInfo, setSavedShippingInfo] = useState(false);
+  const [savedPaymentInfo, setSavedPaymentInfo] = useState(false);
   
   const router = useRouter();
   const { cartItems, totalPrice, clearCart } = useCart();
   const { user, isAuthenticated } = useAuth();
 
+  // Load saved information on initial mount if user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      loadSavedShippingInfo();
+      loadSavedPaymentInfo();
+    }
+  }, [isAuthenticated, user]);
+
+  const loadSavedShippingInfo = async () => {
+    if (!isAuthenticated || !user) return;
+
+    try {
+      const response = await axios.get(`/api/shipping?email=${user.email}`, { withCredentials: true });
+      if (response.data) {
+        console.log('Loading saved shipping info:', response.data);
+        // Convert from backend format to our format
+        setShippingInfo({
+          address: response.data.address || '',
+          city: response.data.address?.split(',')[0] || '',
+          state: response.data.address?.split(',')[1]?.trim() || '',
+          postalCode: response.data.postalcode || '',
+          country: response.data.country || ''
+        });
+        setSavedShippingInfo(true);
+      }
+    } catch (error) {
+      console.error('Failed to load saved shipping info:', error);
+      // Don't show error toast to user - just quietly fail
+    }
+  };
+
+  const loadSavedPaymentInfo = async () => {
+    try {
+      const response = await axios.get('/api/payment', { withCredentials: true });
+      if (response.data && !response.data.message) {
+        console.log('Loading saved payment info:', response.data);
+        // Convert from backend format to our format
+        setPaymentInfo({
+          cardNumber: response.data.card_number || '',
+          cardHolder: response.data.email || '',
+          expiryDate: response.data.exp_date || '',
+          cvv: '' // Never stored on server
+        });
+        setSavedPaymentInfo(true);
+      }
+    } catch (error) {
+      console.error('Failed to load saved payment info:', error);
+      // Don't show error toast to user - just quietly fail
+    }
+  };
+
+  const saveShippingInfoToServer = async () => {
+    if (!isAuthenticated || !user) return;
+    
+    try {
+      // Format address for backend
+      const addressLine = `${shippingInfo.city}, ${shippingInfo.state}`;
+      
+      const response = await axios.post('/api/shipping', {
+        email: user.email,
+        address: `${shippingInfo.address}\n${addressLine}`,
+        postalcode: shippingInfo.postalCode,
+        country: shippingInfo.country
+      }, { withCredentials: true });
+      
+      console.log('Shipping info saved:', response.data);
+      setSavedShippingInfo(true);
+      toast.success('Shipping information saved for future checkouts');
+    } catch (error) {
+      console.error('Failed to save shipping info:', error);
+      toast.error('Could not save shipping information');
+    }
+  };
+
+  const savePaymentInfoToServer = async () => {
+    if (!isAuthenticated || !user) return;
+    
+    try {
+      const response = await axios.post('/api/payment', {
+        email: user.email,
+        payment_method: 'card',
+        card_number: paymentInfo.cardNumber,
+        exp_date: paymentInfo.expiryDate
+      }, { withCredentials: true });
+      
+      console.log('Payment info saved:', response.data);
+      setSavedPaymentInfo(true);
+      toast.success('Payment information saved for future checkouts');
+    } catch (error) {
+      console.error('Failed to save payment info:', error);
+      toast.error('Could not save payment information');
+    }
+  };
+
   const updateShippingInfo = (info: ShippingInfo) => {
     setShippingInfo(info);
+    setSavedShippingInfo(false); // Mark as not saved since it was updated
   };
 
   const updatePaymentInfo = (info: PaymentInfo) => {
     setPaymentInfo(info);
+    setSavedPaymentInfo(false); // Mark as not saved since it was updated
   };
 
   const nextStep = () => {
@@ -87,19 +191,14 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         return false;
       }
       
-      // Simulating API call to create an order
-      const orderData = {
-        items: cartItems,
-        totalAmount: totalPrice,
-        shipping: shippingInfo,
-        payment: {
-          // Omit sensitive data
-          cardHolder: paymentInfo.cardHolder,
-          // Include only last 4 digits of card
-          cardLast4: paymentInfo.cardNumber.slice(-4),
-          expiryDate: paymentInfo.expiryDate,
-        },
-      };
+      // Save shipping and payment info if user is authenticated
+      if (isAuthenticated && !savedShippingInfo) {
+        await saveShippingInfoToServer();
+      }
+      
+      if (isAuthenticated && !savedPaymentInfo) {
+        await savePaymentInfoToServer();
+      }
       
       console.log('Placing order with items:', cartItems);
       
@@ -107,23 +206,55 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       let savedOrdersCount = 0;
       for (const item of cartItems) {
         try {
-          console.log(`Saving order for book ${item.id} to checkout history...`);
+          console.log(`Processing order for book ${item.id || 'unknown'} to checkout history...`);
+          
+          // Make sure we have a valid book identifier
+          if (!item.id) {
+            console.warn('Skipping item with no ID', item);
+            continue;
+          }
+          
+          // Extract ISBN from the item ID or use the item ID itself
+          // Book IDs might be in different formats depending on your data source
+          let book_isbn = item.id;
+          
+          // If the ID contains ISBN, extract it
+          if (typeof book_isbn === 'string' && book_isbn.includes('ISBN:')) {
+            book_isbn = book_isbn.split('ISBN:')[1].trim();
+          }
+          
+          // If ID is a number, format it as a string
+          if (typeof book_isbn === 'number') {
+            book_isbn = String(book_isbn);
+          }
+          
+          // Make sure we have a valid ISBN
+          if (!book_isbn) {
+            console.warn('Skipping item with no valid ISBN', item);
+            continue;
+          }
+          
+          // Prepare data for the API call
           const orderHistoryData = {
             email: user.email,
-            book_isbn: item.id,
+            book_isbn: book_isbn, // Use the processed ISBN
             total_price: item.price * item.quantity,
             qty: item.quantity,
             checkout_date_and_time: new Date().toISOString(),
           };
           
-          console.log('Order history data:', orderHistoryData);
+          console.log('Checkout history data to be sent:', orderHistoryData);
           
-          const response = await axios.post('/api/checkout-history', orderHistoryData);
+          // Send data to the API
+          const response = await axios.post('/api/checkout-history', orderHistoryData, { 
+            withCredentials: true 
+          });
+          
           console.log('Checkout history response:', response.data);
           savedOrdersCount++;
         } catch (error: any) {
-          console.error('Error saving checkout history:', error);
-          console.error('Error response:', error.response?.data);
+          console.error('Error saving checkout history for item:', item.id);
+          console.error('Error details:', error.response?.data || error.message);
           // Continue the checkout process even if history saving fails
         }
       }
@@ -167,6 +298,12 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         prevStep,
         placeOrder,
         isSubmitting,
+        savedShippingInfo,
+        savedPaymentInfo,
+        loadSavedShippingInfo,
+        loadSavedPaymentInfo,
+        saveShippingInfoToServer,
+        savePaymentInfoToServer
       }}
     >
       {children}

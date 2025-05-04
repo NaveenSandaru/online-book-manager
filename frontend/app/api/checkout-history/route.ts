@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // Get the backend URL from environment or use a fallback for development
 const getBackendUrl = () => {
-  return process.env.BACKEND_URL || 'http://localhost:3001';
+  return process.env.BACKEND_URL || 'http://localhost:5000';
 };
 
 export async function POST(request: NextRequest) {
@@ -22,13 +22,28 @@ export async function POST(request: NextRequest) {
     }
     
     const backendUrl = getBackendUrl();
-    const endpoint = `${backendUrl}/checkout-history`;
+    const endpoint = `${backendUrl}/checkout-history/`;
+    
+    // Ensure data is in the correct format expected by the backend
+    const formattedData = {
+      email,
+      book_isbn,
+      total_price: Number(total_price),
+      qty: Number(qty),
+      checkout_date_and_time
+    };
     
     console.log(`Sending checkout history to backend at: ${endpoint}`);
-    console.log('Checkout data:', data);
+    console.log('Formatted checkout data:', formattedData);
     
     // Forward the request to our backend
-    const response = await axios.post(endpoint, data);
+    const response = await axios.post(endpoint, formattedData, {
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
     console.log('Backend response:', response.data);
     
     return NextResponse.json(response.data);

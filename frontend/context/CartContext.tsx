@@ -49,13 +49,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         // Get cart from local storage
         const storedCart = localStorage.getItem(CART_STORAGE_KEY);
-        if (storedCart) {
-          try {
-            const parsedCart = JSON.parse(storedCart);
-            setCartItems(Array.isArray(parsedCart) ? parsedCart : []);
-          } catch (e) {
-            console.error('Failed to parse cart from localStorage:', e);
-            setCartItems([]);
+          if (storedCart) {
+            try {
+              const parsedCart = JSON.parse(storedCart);
+              setCartItems(Array.isArray(parsedCart) ? parsedCart : []);
+            } catch (e) {
+              console.error('Failed to parse cart from localStorage:', e);
+              setCartItems([]);
           }
         }
       } catch (error) {
@@ -130,14 +130,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     clearCart,
     isLoading
   }), [
-    cartItems, 
-    totalItems, 
-    totalPrice, 
-    addToCart, 
-    removeFromCart, 
-    updateQuantity, 
-    clearCart,
-    isLoading
+      cartItems, 
+      totalItems, 
+      totalPrice, 
+      addToCart, 
+      removeFromCart, 
+      updateQuantity, 
+      clearCart,
+      isLoading
   ]);
 
   return (

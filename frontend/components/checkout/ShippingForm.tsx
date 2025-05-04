@@ -4,7 +4,9 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCheckout } from './CheckoutContext';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { FaHistory, FaSave } from 'react-icons/fa';
 
 const shippingSchema = z.object({
   address: z.string().min(1, 'Address is required'),
@@ -17,7 +19,15 @@ const shippingSchema = z.object({
 type ShippingFormValues = z.infer<typeof shippingSchema>;
 
 export default function ShippingForm() {
-  const { shippingInfo, updateShippingInfo } = useCheckout();
+  const { 
+    shippingInfo, 
+    updateShippingInfo, 
+    savedShippingInfo, 
+    loadSavedShippingInfo,
+    saveShippingInfoToServer 
+  } = useCheckout();
+  const { isAuthenticated } = useAuth();
+  const [showSaveOption, setShowSaveOption] = useState(false);
   
   const {
     register,
@@ -25,11 +35,17 @@ export default function ShippingForm() {
     formState: { errors },
     watch,
     getValues,
+    reset,
   } = useForm<ShippingFormValues>({
     resolver: zodResolver(shippingSchema),
     defaultValues: shippingInfo,
     mode: 'onBlur', // Only validate on blur, not while typing
   });
+
+  // Reset form when shipping info changes (e.g., when saved info is loaded)
+  useEffect(() => {
+    reset(shippingInfo);
+  }, [shippingInfo, reset]);
 
   // Auto-save form values on change
   useEffect(() => {
@@ -38,6 +54,9 @@ export default function ShippingForm() {
         // Use timeout to avoid calling too frequently during typing
         const timeoutId = setTimeout(() => {
           updateShippingInfo(getValues() as ShippingFormValues);
+          if (isAuthenticated) {
+            setShowSaveOption(true);
+          }
         }, 500);
         
         return () => clearTimeout(timeoutId);
@@ -45,11 +64,44 @@ export default function ShippingForm() {
     });
     
     return () => subscription.unsubscribe();
-  }, [watch, updateShippingInfo, getValues]);
+  }, [watch, updateShippingInfo, getValues, isAuthenticated]);
+
+  const handleLoadSavedInfo = async () => {
+    await loadSavedShippingInfo();
+  };
+
+  const handleSaveInfo = async () => {
+    await saveShippingInfoToServer();
+    setShowSaveOption(false);
+  };
 
   return (
     <form className="space-y-4">
-      <h2 className="text-xl font-semibold mb-4">Shipping Information</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">Shipping Information</h2>
+        {isAuthenticated && (
+          <div className="flex items-center space-x-2">
+            {savedShippingInfo && (
+              <button 
+                type="button"
+                onClick={handleLoadSavedInfo}
+                className="text-primary-600 flex items-center text-sm"
+              >
+                <FaHistory className="mr-1" /> Load Saved
+              </button>
+            )}
+            {showSaveOption && (
+              <button 
+                type="button"
+                onClick={handleSaveInfo}
+                className="bg-primary-600 text-white px-2 py-1 rounded text-sm flex items-center"
+              >
+                <FaSave className="mr-1" /> Save for Later
+              </button>
+            )}
+          </div>
+        )}
+      </div>
       
       <div>
         <label htmlFor="address" className="block text-gray-700 font-medium mb-1">

@@ -4,8 +4,9 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCheckout } from './CheckoutContext';
-import { FaCcVisa, FaCcMastercard, FaCcAmex, FaCcDiscover, FaCreditCard } from 'react-icons/fa';
-import { useEffect } from 'react';
+import { FaCcVisa, FaCcMastercard, FaCcAmex, FaCcDiscover, FaCreditCard, FaHistory, FaSave } from 'react-icons/fa';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
 
 // Define more flexible schemas that allow for input formatting
 const paymentSchema = z.object({
@@ -27,7 +28,15 @@ const paymentSchema = z.object({
 type PaymentFormValues = z.infer<typeof paymentSchema>;
 
 export default function PaymentForm() {
-  const { paymentInfo, updatePaymentInfo } = useCheckout();
+  const { 
+    paymentInfo, 
+    updatePaymentInfo, 
+    savedPaymentInfo, 
+    loadSavedPaymentInfo,
+    savePaymentInfoToServer 
+  } = useCheckout();
+  const { isAuthenticated } = useAuth();
+  const [showSaveOption, setShowSaveOption] = useState(false);
   
   const {
     register,
@@ -36,6 +45,7 @@ export default function PaymentForm() {
     watch,
     setValue,
     getValues,
+    reset,
   } = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentSchema),
     defaultValues: paymentInfo,
@@ -44,9 +54,10 @@ export default function PaymentForm() {
 
   const cardNumber = watch('cardNumber', '');
   
-  const onSubmit = (data: PaymentFormValues) => {
-    updatePaymentInfo(data);
-  };
+  // Reset form when payment info changes (e.g., when saved info is loaded)
+  useEffect(() => {
+    reset(paymentInfo);
+  }, [paymentInfo, reset]);
 
   // Format card number with spaces
   const formatCardNumber = (value: string) => {
@@ -73,6 +84,9 @@ export default function PaymentForm() {
         // Use timeout to avoid calling too frequently during typing
         const timeoutId = setTimeout(() => {
           updatePaymentInfo(getValues() as PaymentFormValues);
+          if (isAuthenticated) {
+            setShowSaveOption(true);
+          }
         }, 500);
         
         return () => clearTimeout(timeoutId);
@@ -80,7 +94,7 @@ export default function PaymentForm() {
     });
     
     return () => subscription.unsubscribe();
-  }, [watch, updatePaymentInfo, getValues]);
+  }, [watch, updatePaymentInfo, getValues, isAuthenticated]);
 
   // Function to determine card type based on first digits
   const getCardType = (number: string) => {
@@ -95,9 +109,42 @@ export default function PaymentForm() {
     return <FaCreditCard className="text-gray-400" size={24} />;
   };
 
+  const handleLoadSavedInfo = async () => {
+    await loadSavedPaymentInfo();
+  };
+
+  const handleSaveInfo = async () => {
+    await savePaymentInfoToServer();
+    setShowSaveOption(false);
+  };
+
   return (
     <form className="space-y-4">
-      <h2 className="text-xl font-semibold mb-4">Payment Information</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">Payment Information</h2>
+        {isAuthenticated && (
+          <div className="flex items-center space-x-2">
+            {savedPaymentInfo && (
+              <button 
+                type="button"
+                onClick={handleLoadSavedInfo}
+                className="text-primary-600 flex items-center text-sm"
+              >
+                <FaHistory className="mr-1" /> Load Saved
+              </button>
+            )}
+            {showSaveOption && (
+              <button 
+                type="button"
+                onClick={handleSaveInfo}
+                className="bg-primary-600 text-white px-2 py-1 rounded text-sm flex items-center"
+              >
+                <FaSave className="mr-1" /> Save for Later
+              </button>
+            )}
+          </div>
+        )}
+      </div>
       
       <div>
         <label htmlFor="cardNumber" className="block text-gray-700 font-medium mb-1">

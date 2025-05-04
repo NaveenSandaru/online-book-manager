@@ -9,7 +9,7 @@ import { FaBook, FaCalendarAlt, FaDollarSign, FaSpinner, FaShoppingCart } from '
 interface OrderHistoryItem {
   email: string;
   book_isbn: string;
-  total_price: number;
+  total_price: number | string;
   qty: number;
   checkout_date_and_time: string;
 }
@@ -30,7 +30,17 @@ export default function OrderHistoryPage() {
       try {
         setIsLoading(true);
         const { data } = await axios.get(`/api/checkout-history/${user.email}`);
-        setOrders(data);
+        console.log('Order history data:', data);
+        
+        const processedOrders = data.map((order: any) => ({
+          ...order,
+          total_price: typeof order.total_price === 'string' 
+            ? parseFloat(order.total_price) 
+            : order.total_price,
+          qty: typeof order.qty === 'string' ? parseInt(order.qty, 10) : order.qty
+        }));
+        
+        setOrders(processedOrders);
       } catch (error) {
         console.error('Failed to fetch order history:', error);
       } finally {
@@ -41,8 +51,18 @@ export default function OrderHistoryPage() {
     fetchOrderHistory();
   }, [isAuthenticated, user, router]);
 
+  const formatPrice = (price: number | string) => {
+    if (price === null || price === undefined) return '0.00';
+    
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    
+    if (isNaN(numPrice)) return '0.00';
+    
+    return numPrice.toFixed(2);
+  };
+
   if (!isAuthenticated) {
-    return null; // Will redirect in useEffect
+    return null;
   }
 
   return (
@@ -97,7 +117,7 @@ export default function OrderHistoryPage() {
                     <p className="text-sm text-gray-500">Total</p>
                     <p className="font-medium flex items-center">
                       <FaDollarSign className="text-green-600" size={14} />
-                      {order.total_price.toFixed(2)}
+                      {formatPrice(order.total_price)}
                     </p>
                   </div>
                 </div>
