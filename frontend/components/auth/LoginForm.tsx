@@ -78,15 +78,11 @@ export function LoginForm() {
         router.push(redirectPath);
       } else if (result.needsVerification) {
         setNeedsVerification(true);
-<<<<<<< Updated upstream
-        setUserEmail(result.email?result.email:'');
-=======
         if (result.email) {
           setUserEmail(result.email);
         } else {
           setUserEmail(data.email);
         }
->>>>>>> Stashed changes
       } else {
         setLoginError(result.message || 'Invalid email or password');
       }
