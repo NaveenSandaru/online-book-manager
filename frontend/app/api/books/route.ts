@@ -8,8 +8,16 @@ const getBackendUrl = () => {
 export async function GET() {
   try {
     const backendUrl = getBackendUrl();
-    // Forward the request to the backend
-    const response = await fetch(`${backendUrl}/books`);
+    // Add a timestamp to bust any potential cache
+    const timestamp = Date.now();
+    // Forward the request to the backend with cache-busting
+    const response = await fetch(`${backendUrl}/books?_t=${timestamp}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
     
     if (!response.ok) {
       return new NextResponse(

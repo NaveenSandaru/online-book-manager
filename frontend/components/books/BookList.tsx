@@ -37,7 +37,16 @@ export default function BookList({ featured = false, limit, searchQuery }: BookL
           endpoint = `/api/books/search?q=${encodeURIComponent(searchQuery)}`;
         }
         
-        const { data } = await axios.get(endpoint);
+        // Add cache-busting timestamp
+        const timestamp = Date.now();
+        endpoint = `${endpoint}${endpoint.includes('?') ? '&' : '?'}_t=${timestamp}`;
+        
+        const { data } = await axios.get(endpoint, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
         
         // Ensure all book prices are rounded consistently
         let processedBooks = data.map((book: Book) => ({

@@ -14,9 +14,17 @@ export async function GET(request: Request) {
       return NextResponse.json([]);
     }
     
-    // Forward the request to the backend
+    // Add a timestamp to bust any potential cache
+    const timestamp = Date.now();
     const backendUrl = getBackendUrl();
-    const response = await fetch(`${backendUrl}/books/search?q=${encodeURIComponent(query)}`);
+    // Forward the request to the backend with cache-busting
+    const response = await fetch(`${backendUrl}/books/search?q=${encodeURIComponent(query)}&_t=${timestamp}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
     
     if (!response.ok) {
       return new NextResponse(

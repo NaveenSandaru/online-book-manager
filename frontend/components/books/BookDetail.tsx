@@ -38,7 +38,18 @@ export default function BookDetail({ id }: BookDetailProps) {
       try {
         setLoading(true);
         console.log(`Fetching book with ID: ${id}`);
-        const response = await axios.get(`/api/books/${id}`);
+        
+        // Add cache-busting timestamp
+        const timestamp = Date.now();
+        const endpoint = `/api/books/${id}?_t=${timestamp}`;
+        
+        const response = await axios.get(endpoint, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
+        
         console.log('Book data:', response.data);
         
         // Make sure the price is rounded to 2 decimal places
