@@ -245,10 +245,17 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         }
       }
       
+      // Save order items to localStorage for invoice generation
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('lastOrderItems', JSON.stringify(cartItems));
+      }
+      
       console.log('Placing order with items:', cartItems);
       
       // Add checkout history entries to backend
       let savedOrdersCount = 0;
+      
+      // Track the number of successfully saved orders
       for (const item of cartItems) {
         try {
           console.log(`Processing order for book ${item.id || 'unknown'} to checkout history...`);

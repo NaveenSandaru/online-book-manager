@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import BookCard from './BookCard';
 import Loader from '@/components/ui/Loader';
+import { roundPrice } from '@/utils/formatters';
 
 interface Book {
   id: string;
@@ -37,19 +38,24 @@ export default function BookList({ featured = false, limit, searchQuery }: BookL
         }
         
         const { data } = await axios.get(endpoint);
-        let filteredBooks = data;
+        
+        // Ensure all book prices are rounded consistently
+        let processedBooks = data.map((book: Book) => ({
+          ...book,
+          price: roundPrice(book.price)
+        }));
         
         // If featured is true, sort by some criteria (e.g., highest stock)
         if (featured) {
-          filteredBooks = data.sort((a: Book, b: Book) => b.stock - a.stock);
+          processedBooks = processedBooks.sort((a: Book, b: Book) => b.stock - a.stock);
         }
         
         // Apply limit if provided
         if (limit && limit > 0) {
-          filteredBooks = filteredBooks.slice(0, limit);
+          processedBooks = processedBooks.slice(0, limit);
         }
         
-        setBooks(filteredBooks);
+        setBooks(processedBooks);
       } catch (error) {
         console.error('Failed to fetch books:', error);
         setError('Failed to load books. Please try again later.');

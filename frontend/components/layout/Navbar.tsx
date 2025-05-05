@@ -4,15 +4,17 @@ import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useState, memo, useEffect } from 'react';
 import { FaShoppingCart, FaUser, FaBars, FaTimes, FaSignOutAlt, FaSearch } from 'react-icons/fa';
+import { useRouter } from 'next/navigation';
 
 // Extract search component to improve code organization
 const SearchBar = memo(({ onMobile = false }: { onMobile?: boolean }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      window.location.href = `/books/search?q=${encodeURIComponent(searchQuery.trim())}`;
+      router.push(`/books/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 

@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 
+// Get the backend URL from environment or use a fallback for development
+const getBackendUrl = () => {
+  return process.env.BACKEND_URL || 'http://localhost:5000';
+};
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -10,7 +15,8 @@ export async function GET(request: Request) {
     }
     
     // Forward the request to the backend
-    const response = await fetch(`http://localhost:5000/books/search?q=${encodeURIComponent(query)}`);
+    const backendUrl = getBackendUrl();
+    const response = await fetch(`${backendUrl}/books/search?q=${encodeURIComponent(query)}`);
     
     if (!response.ok) {
       return new NextResponse(

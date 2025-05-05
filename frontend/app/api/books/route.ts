@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
 
+// Get the backend URL from environment or use a fallback for development
+const getBackendUrl = () => {
+  return process.env.BACKEND_URL || 'http://localhost:5000';
+};
+
 export async function GET() {
   try {
+    const backendUrl = getBackendUrl();
     // Forward the request to the backend
-    const response = await fetch('http://localhost:5000/books');
+    const response = await fetch(`${backendUrl}/books`);
     
     if (!response.ok) {
       return new NextResponse(
