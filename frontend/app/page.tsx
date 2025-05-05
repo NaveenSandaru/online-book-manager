@@ -35,12 +35,6 @@ export default function Home() {
             View All <span className="ml-1">→</span>
           </Link>
         </div>
-        <div className="bg-yellow-100 p-4 rounded-lg mb-6 border-l-4 border-yellow-500">
-          <p className="text-yellow-800">
-            <strong>New Pricing!</strong> We've updated our pricing to be more competitive. 
-            Books are now priced between $10 and $100 to provide better value.
-          </p>
-        </div>
         <BookList featured={true} limit={4} />
       </section>
       
