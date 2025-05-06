@@ -155,9 +155,6 @@ export default function Navbar() {
             <Link href="/books" className="text-gray-700 hover:text-primary-600">
               Books
             </Link>
-            <Link href="/categories" className="text-gray-700 hover:text-primary-600">
-              Categories
-            </Link>
             <SearchBar />
           </div>
 
@@ -191,9 +188,6 @@ export default function Navbar() {
             <div className="flex flex-col space-y-3">
               <Link href="/books" className="text-gray-700 hover:text-primary-600 py-2">
                 Books
-              </Link>
-              <Link href="/categories" className="text-gray-700 hover:text-primary-600 py-2">
-                Categories
               </Link>
               <Link href="/cart" className="text-gray-700 hover:text-primary-600 py-2 flex items-center">
                 <FaShoppingCart className="mr-2" /> Cart {totalItems > 0 && `(${totalItems})`}
