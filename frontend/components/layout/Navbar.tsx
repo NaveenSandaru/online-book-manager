@@ -66,9 +66,6 @@ const AuthLinks = memo(({ isMobile = false }: { isMobile?: boolean }) => {
     if (isMobile) {
       return (
         <>
-          <Link href="/profile" className="text-gray-700 hover:text-primary-600 py-2">
-            Profile
-          </Link>
           <Link href="/orders" className="text-gray-700 hover:text-primary-600 py-2">
             Orders
           </Link>
@@ -93,9 +90,6 @@ const AuthLinks = memo(({ isMobile = false }: { isMobile?: boolean }) => {
         </button>
         {dropdownOpen && (
           <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
-            <Link href="/profile" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">
-              Profile
-            </Link>
             <Link href="/orders" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">
               Orders
             </Link>
